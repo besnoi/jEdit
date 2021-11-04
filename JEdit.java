@@ -1,8 +1,6 @@
 /*
     youngneer
  */
-
-package jedit;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -26,6 +24,7 @@ public class JEdit extends JFrame implements ActionListener{
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLAF();
+        setIcon();
         initMenu();
         initTextArea();
         newFile();
@@ -84,6 +83,13 @@ public class JEdit extends JFrame implements ActionListener{
                 System.exit(0);
                 break;
         }
+    }
+    private void setIcon(){
+        URL url = this.getClass().getResource("/icon.png");
+        System.out.println(url);
+        Toolkit kit = Toolkit.getDefaultToolkit();
+        Image img = kit.createImage(url);
+        setIconImage(img);
     }
     private void setLAF(){
         try {
