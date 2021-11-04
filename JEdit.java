@@ -1,20 +1,26 @@
+/*
+    youngneer
+ */
+
 package jedit;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.BufferedImageFilter;
-import java.awt.print.PrinterException;
 import java.io.*;
 
 import javax.swing.UIManager.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import static javax.swing.GroupLayout.Alignment.*;
+import java.net.URL;
 
 public class JEdit extends JFrame implements ActionListener{
     JTextArea   textArea;
     JScrollPane scrollPane;
     File currentFile;
-    String copiedText="";
+    int findIndex = 0;
+    String findString = "";
+    boolean findWrap = false, findCase = false;
     JEdit(){
         setBounds(0,0,640,480);
         setLocationRelativeTo(null);
@@ -25,6 +31,7 @@ public class JEdit extends JFrame implements ActionListener{
         newFile();
     }
     public static void main(String[] args){
+
         new JEdit().setVisible(true);
     }
     @Override
@@ -49,7 +56,6 @@ public class JEdit extends JFrame implements ActionListener{
                 printFile();
                 break;
             case "Cut":
-                copiedText = textArea.getSelectedText();
                 textArea.cut();
                 break;
             case "Copy":
@@ -71,6 +77,9 @@ public class JEdit extends JFrame implements ActionListener{
                         JOptionPane.INFORMATION_MESSAGE
                 );
                 break;
+            case "Find":
+                showFind();
+                break;
             case "Quit":
                 System.exit(0);
                 break;
@@ -78,18 +87,124 @@ public class JEdit extends JFrame implements ActionListener{
     }
     private void setLAF(){
         try {
-            for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
+            //set default Look and Feel for the OS
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+//            for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+//                if ("Nimbus".equals(info.getName())) {
+//                    UIManager.setLookAndFeel(info.getClassName());
+//                    break;
+//                }
+//            }
         } catch (Exception e) {
             // If Nimbus is not available, you can set the GUI to another look and feel.
         }
     }
     public void toggleWordWrap(){
-        textArea.setLineWrap(!textArea.getLineWrap());
+        textArea.setWrapStyleWord(!textArea.getWrapStyleWord());
+    }
+    private void findText(boolean prev){
+        findIndex = textArea.getCaretPosition();
+        if (textArea.getSelectedText()!=null) {
+            if (prev)
+                findIndex = findIndex - textArea.getSelectedText().length() - 1; //could be -1
+            else {
+                System.out.print(findIndex+"-");
+                findIndex = findIndex + 1;
+                System.out.println(findIndex);
+            }
+        }
+        if (!prev && findIndex==-1)
+            findIndex = 0;
+
+        String s = textArea.getText();
+        String lookUp = findString;
+
+        if (!findCase){ //case-insensitive matching
+            s = s.toLowerCase();
+            lookUp = lookUp.toLowerCase();
+        }
+
+        if (prev) findIndex=s.lastIndexOf(lookUp,findIndex);
+        else findIndex=s.indexOf(lookUp,findIndex);
+
+        if (findIndex!=-1){
+            textArea.select(findIndex, findIndex + findString.length());
+        }else{ //NOT FOUND!
+            if (findWrap && s.lastIndexOf(lookUp)!=s.indexOf(lookUp)){
+                if (prev) findIndex=s.length()-1; else findIndex=0;
+                textArea.setCaretPosition(findIndex);
+                findText(prev);
+            }
+        }
+    }
+    private void showFind(){
+        JDialog fFind = new JDialog(this,"Find");
+        JLabel label = new JLabel("Find What:");
+        JTextField textField = new JTextField();
+        JCheckBox caseCheckBox = new JCheckBox("Match Case");
+        JCheckBox wrapCheckBox = new JCheckBox("Wrap Around");
+
+        textField.setText(findString);
+        caseCheckBox.setSelected(findCase);
+        wrapCheckBox.setSelected(findWrap);
+
+        JButton findNext = new JButton("Find Next");
+        JButton findPrev = new JButton("Find Previous");
+
+        findNext.addActionListener(e->{
+            findString = textField.getText();
+            findCase   = caseCheckBox.isSelected();
+            findWrap   = wrapCheckBox.isSelected();
+            findText(false);
+        });
+
+        findPrev.addActionListener(e->{
+            findString = textField.getText();
+            findCase   = caseCheckBox.isSelected();
+            findWrap   = wrapCheckBox.isSelected();
+            findText(true);
+        });
+
+        //See: https://docs.oracle.com/javase/tutorial/uiswing/layout/groupExample.html
+
+        GroupLayout layout = new GroupLayout(fFind.getContentPane());
+        fFind.getContentPane().setLayout(layout);
+        layout.setAutoCreateGaps(true);
+        layout.setAutoCreateContainerGaps(true);
+
+        layout.setHorizontalGroup(layout.createSequentialGroup()
+                .addComponent(label)
+                .addGroup(layout.createParallelGroup(LEADING)
+                        .addComponent(textField)
+                        .addGroup(layout.createSequentialGroup()
+                                .addComponent(caseCheckBox)
+                                .addComponent(wrapCheckBox)))
+                .addGroup(layout.createParallelGroup(LEADING)
+                        .addComponent(findNext)
+                        .addComponent(findPrev))
+        );
+
+        layout.linkSize(SwingConstants.HORIZONTAL, findNext, findPrev);
+
+        layout.setVerticalGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(BASELINE)
+                        .addComponent(label)
+                        .addComponent(textField)
+                        .addComponent(findNext))
+                .addGroup(layout.createParallelGroup(LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(BASELINE)
+                                        .addComponent(caseCheckBox)
+                                        .addComponent(wrapCheckBox))
+                                .addGroup(layout.createParallelGroup(BASELINE)))
+                        .addComponent(findPrev))
+        );
+
+        fFind.pack();
+        fFind.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        fFind.setLocationRelativeTo(this);
+        fFind.setResizable(false);
+        fFind.setVisible(true);
     }
     private void newFile(){
         setTitle("Untitled - jEdit");
@@ -180,19 +295,19 @@ public class JEdit extends JFrame implements ActionListener{
         JMenuItem mCut       = new JMenuItem("Cut");
         JMenuItem mCopy      = new JMenuItem("Copy");
         JMenuItem mPaste     = new JMenuItem("Paste");
-        JMenuItem mReplace   = new JMenuItem("Replace");
+        JMenuItem mFind   = new JMenuItem("Find");
         JMenuItem mSelectAll = new JMenuItem("Select All");
 
         mCut.setAccelerator        (KeyStroke.getKeyStroke (KeyEvent.VK_X, ActionEvent.CTRL_MASK));
         mCopy.setAccelerator       (KeyStroke.getKeyStroke (KeyEvent.VK_C, ActionEvent.CTRL_MASK));
         mPaste.setAccelerator      (KeyStroke.getKeyStroke (KeyEvent.VK_V, ActionEvent.CTRL_MASK));
-        mReplace.setAccelerator    (KeyStroke.getKeyStroke (KeyEvent.VK_R, ActionEvent.CTRL_MASK));
+        mFind.setAccelerator    (KeyStroke.getKeyStroke (KeyEvent.VK_F, ActionEvent.CTRL_MASK));
         mSelectAll.setAccelerator  (KeyStroke.getKeyStroke (KeyEvent.VK_A, ActionEvent.CTRL_MASK));
 
         mEdit.add(mCut);
         mEdit.add(mCopy);
         mEdit.add(mPaste);
-        mEdit.add(mReplace);
+        mEdit.add(mFind);
         mEdit.add(mSelectAll);
 
         JMenuItem mWordWrap = new JCheckBoxMenuItem("Word Wrap");
@@ -210,7 +325,7 @@ public class JEdit extends JFrame implements ActionListener{
         mCut.addActionListener       (this);
         mCopy.addActionListener      (this);
         mPaste.addActionListener     (this);
-        mReplace.addActionListener   (this);
+        mFind.addActionListener      (this);
         mSelectAll.addActionListener (this);
         mWordWrap.addActionListener  (this);
         mAbout.addActionListener     (this);
