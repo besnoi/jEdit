@@ -1,6 +1,8 @@
 /*
     youngneer
  */
+
+package jedit;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -70,14 +72,17 @@ public class JEdit extends JFrame implements ActionListener{
                 toggleWordWrap();
                 break;
             case "About":
-                JOptionPane.showMessageDialog(null,
+                JOptionPane.showMessageDialog(this,
                         "jEdit v.1.0\n(C) Lorem Ipsum 2021",
                         "About jEdit ",
                         JOptionPane.INFORMATION_MESSAGE
                 );
                 break;
             case "Find":
-                showFind();
+                findAndReplace(true);
+                break;
+            case "Replace":
+                findAndReplace(false);
                 break;
             case "Quit":
                 System.exit(0);
@@ -108,7 +113,7 @@ public class JEdit extends JFrame implements ActionListener{
     public void toggleWordWrap(){
         textArea.setWrapStyleWord(!textArea.getWrapStyleWord());
     }
-    private void findText(boolean prev){
+    private void findText(boolean prev,JDialog parent){
         findIndex = textArea.getCaretPosition();
         if (textArea.getSelectedText()!=null) {
             if (prev)
@@ -139,39 +144,42 @@ public class JEdit extends JFrame implements ActionListener{
             if (findWrap && s.lastIndexOf(lookUp)!=s.indexOf(lookUp)){
                 if (prev) findIndex=s.length()-1; else findIndex=0;
                 textArea.setCaretPosition(findIndex);
-                findText(prev);
+                findText(prev,parent);
             }
         }
+        if (findIndex==-1)
+            JOptionPane.showMessageDialog(parent,
+                    "Cannot find \""+findString+"\"",
+                    "Error! ",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
     }
-    private void showFind(){
-        JDialog fFind = new JDialog(this,"Find");
-        JLabel label = new JLabel("Find What:");
+    private void findAndReplace(boolean onlyFind){
+        JDialog fFind = new JDialog(this,onlyFind?"Find":"Replace");
+        JLabel label = new JLabel(onlyFind?"Find":"Replace"+" What:");
         JTextField textField = new JTextField();
         JCheckBox caseCheckBox = new JCheckBox("Match Case");
         JCheckBox wrapCheckBox = new JCheckBox("Wrap Around");
 
-        textField.setText(findString);
-        caseCheckBox.setSelected(findCase);
-        wrapCheckBox.setSelected(findWrap);
-
-        JButton findNext = new JButton("Find Next");
-        JButton findPrev = new JButton("Find Previous");
+        JButton findNext   = new JButton("Find Next");
+        JButton findPrev   = new JButton("Find Previous");
+        JButton replace    = new JButton("Replace");
+        JButton replaceAll = new JButton("Replace All");
 
         findNext.addActionListener(e->{
             findString = textField.getText();
             findCase   = caseCheckBox.isSelected();
             findWrap   = wrapCheckBox.isSelected();
-            findText(false);
+            findText(false,fFind);
         });
 
         findPrev.addActionListener(e->{
             findString = textField.getText();
             findCase   = caseCheckBox.isSelected();
             findWrap   = wrapCheckBox.isSelected();
-            findText(true);
+            findText(true,fFind);
         });
-
-        //See: https://docs.oracle.com/javase/tutorial/uiswing/layout/groupExample.html
 
         GroupLayout layout = new GroupLayout(fFind.getContentPane());
         fFind.getContentPane().setLayout(layout);
@@ -187,10 +195,13 @@ public class JEdit extends JFrame implements ActionListener{
                                 .addComponent(wrapCheckBox)))
                 .addGroup(layout.createParallelGroup(LEADING)
                         .addComponent(findNext)
-                        .addComponent(findPrev))
+                        .addComponent(findPrev)
+                        .addComponent(replace)
+                        .addComponent(replaceAll)
+                )
         );
 
-        layout.linkSize(SwingConstants.HORIZONTAL, findNext, findPrev);
+        layout.linkSize(SwingConstants.HORIZONTAL, findNext, findPrev, replace, replaceAll);
 
         layout.setVerticalGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(BASELINE)
@@ -204,12 +215,17 @@ public class JEdit extends JFrame implements ActionListener{
                                         .addComponent(wrapCheckBox))
                                 .addGroup(layout.createParallelGroup(BASELINE)))
                         .addComponent(findPrev))
+                .addGroup(layout.createParallelGroup(BASELINE).addComponent(replace))
+                .addGroup(layout.createParallelGroup(BASELINE).addComponent(replaceAll))
         );
 
+        replace.setVisible(!onlyFind);
+        replaceAll.setVisible(!onlyFind);
+
         fFind.pack();
-        fFind.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         fFind.setLocationRelativeTo(this);
         fFind.setResizable(false);
+        fFind.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         fFind.setVisible(true);
     }
     private void newFile(){
@@ -264,6 +280,13 @@ public class JEdit extends JFrame implements ActionListener{
         saveFile();
 
     }
+    private void initTextArea(){
+        textArea = new JTextArea();
+        textArea.setFont(new Font("SAN_SERIF", Font.PLAIN, 20));
+        scrollPane = new JScrollPane(textArea);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        add(scrollPane, BorderLayout.CENTER);
+    }
     private void initMenu(){
         JMenuBar menubar = new JMenuBar();
 
@@ -284,12 +307,12 @@ public class JEdit extends JFrame implements ActionListener{
         JMenuItem mPrint  = new JMenuItem("Print");
         JMenuItem mExit   = new JMenuItem("Quit");
 
-        mNew.setAccelerator    (KeyStroke.getKeyStroke (KeyEvent.VK_N, ActionEvent.CTRL_MASK));
-        mOpen.setAccelerator   (KeyStroke.getKeyStroke (KeyEvent.VK_O, ActionEvent.CTRL_MASK));
-        mSave.setAccelerator   (KeyStroke.getKeyStroke (KeyEvent.VK_S, ActionEvent.CTRL_MASK));
-        mSaveAs.setAccelerator (KeyStroke.getKeyStroke (KeyEvent.VK_S, ActionEvent.CTRL_MASK+ActionEvent.SHIFT_MASK));
-        mPrint.setAccelerator  (KeyStroke.getKeyStroke (KeyEvent.VK_P, ActionEvent.CTRL_MASK));
-        mExit.setAccelerator   (KeyStroke.getKeyStroke (KeyEvent.VK_Q, ActionEvent.CTRL_MASK));
+        mNew.setAccelerator    (KeyStroke.getKeyStroke (KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK));
+        mOpen.setAccelerator   (KeyStroke.getKeyStroke (KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK));
+        mSave.setAccelerator   (KeyStroke.getKeyStroke (KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK));
+        mSaveAs.setAccelerator (KeyStroke.getKeyStroke (KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK+InputEvent.SHIFT_DOWN_MASK));
+        mPrint.setAccelerator  (KeyStroke.getKeyStroke (KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK));
+        mExit.setAccelerator   (KeyStroke.getKeyStroke (KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK));
 
         mFile.add(mNew);
         mFile.add(mOpen);
@@ -301,19 +324,22 @@ public class JEdit extends JFrame implements ActionListener{
         JMenuItem mCut       = new JMenuItem("Cut");
         JMenuItem mCopy      = new JMenuItem("Copy");
         JMenuItem mPaste     = new JMenuItem("Paste");
-        JMenuItem mFind   = new JMenuItem("Find");
+        JMenuItem mFind      = new JMenuItem("Find");
+        JMenuItem mReplace   = new JMenuItem("Replace");
         JMenuItem mSelectAll = new JMenuItem("Select All");
 
-        mCut.setAccelerator        (KeyStroke.getKeyStroke (KeyEvent.VK_X, ActionEvent.CTRL_MASK));
-        mCopy.setAccelerator       (KeyStroke.getKeyStroke (KeyEvent.VK_C, ActionEvent.CTRL_MASK));
-        mPaste.setAccelerator      (KeyStroke.getKeyStroke (KeyEvent.VK_V, ActionEvent.CTRL_MASK));
-        mFind.setAccelerator    (KeyStroke.getKeyStroke (KeyEvent.VK_F, ActionEvent.CTRL_MASK));
-        mSelectAll.setAccelerator  (KeyStroke.getKeyStroke (KeyEvent.VK_A, ActionEvent.CTRL_MASK));
+        mCut.setAccelerator        (KeyStroke.getKeyStroke (KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK));
+        mCopy.setAccelerator       (KeyStroke.getKeyStroke (KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK));
+        mPaste.setAccelerator      (KeyStroke.getKeyStroke (KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK));
+        mFind.setAccelerator       (KeyStroke.getKeyStroke (KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK));
+        mReplace.setAccelerator    (KeyStroke.getKeyStroke (KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
+        mSelectAll.setAccelerator  (KeyStroke.getKeyStroke (KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK));
 
         mEdit.add(mCut);
         mEdit.add(mCopy);
         mEdit.add(mPaste);
         mEdit.add(mFind);
+        mEdit.add(mReplace);
         mEdit.add(mSelectAll);
 
         JMenuItem mWordWrap = new JCheckBoxMenuItem("Word Wrap");
@@ -332,23 +358,17 @@ public class JEdit extends JFrame implements ActionListener{
         mCopy.addActionListener      (this);
         mPaste.addActionListener     (this);
         mFind.addActionListener      (this);
+        mReplace.addActionListener   (this);
         mSelectAll.addActionListener (this);
         mWordWrap.addActionListener  (this);
         mAbout.addActionListener     (this);
 
         setJMenuBar(menubar);
     }
-    private void initTextArea(){
-        textArea = new JTextArea();
-        textArea.setFont(new Font("SAN_SERIF", Font.PLAIN, 20));
-        scrollPane = new JScrollPane(textArea);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        add(scrollPane, BorderLayout.CENTER);
-    }
     // remove txt extension from filename
     private String removeTXT(String f){
         if (f.length()<5) return f;
-        if(f.substring(f.length()-4,f.length()).toLowerCase().equals(".txt"))
+        if(f.substring(f.length()-4).equalsIgnoreCase(".txt"))
             return f.substring(0,f.length()-4);
         else
             return f;
