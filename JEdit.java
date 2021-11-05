@@ -1,8 +1,6 @@
-/*
-    youngneer
- */
+//youngneer
 
-package jedit;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -19,7 +17,7 @@ public class JEdit extends JFrame implements ActionListener{
     JScrollPane scrollPane;
     File currentFile;
     int findIndex = 0;
-    String findString = "";
+    String findString = "", replaceString = "";
     boolean findWrap = false, findCase = false;
     JEdit(){
         setBounds(0,0,640,480);
@@ -32,7 +30,6 @@ public class JEdit extends JFrame implements ActionListener{
         newFile();
     }
     public static void main(String[] args){
-
         new JEdit().setVisible(true);
     }
     @Override
@@ -79,10 +76,10 @@ public class JEdit extends JFrame implements ActionListener{
                 );
                 break;
             case "Find":
-                findAndReplace(true);
+                findAndReplace(false);
                 break;
             case "Replace":
-                findAndReplace(false);
+                findAndReplace(true);
                 break;
             case "Quit":
                 System.exit(0);
@@ -112,6 +109,18 @@ public class JEdit extends JFrame implements ActionListener{
     }
     public void toggleWordWrap(){
         textArea.setWrapStyleWord(!textArea.getWrapStyleWord());
+    }
+    private void replaceText(JDialog parent){
+        if (textArea.getSelectedText()==null)
+            findText(false,parent);
+        else if ((findCase && textArea.getSelectedText().equals(findString)) || (!findCase && textArea.getSelectedText().equalsIgnoreCase(findString))){
+            if (findIndex==textArea.getSelectionStart())
+                textArea.replaceSelection(replaceString);
+        }
+    }
+    private void replaceTextAll(){
+
+        textArea.setText(textArea.getText().replaceAll((!findCase?"(?i)":"")+findString,replaceString));
     }
     private void findText(boolean prev,JDialog parent){
         findIndex = textArea.getCaretPosition();
@@ -147,18 +156,23 @@ public class JEdit extends JFrame implements ActionListener{
                 findText(prev,parent);
             }
         }
-        if (findIndex==-1)
+        if (findIndex==-1) {
             JOptionPane.showMessageDialog(parent,
-                    "Cannot find \""+findString+"\"",
+                    "Cannot find \"" + findString + "\"",
                     "Error! ",
                     JOptionPane.INFORMATION_MESSAGE
             );
+            if (textArea.getSelectedText()!=null)
+                findIndex = textArea.getSelectionStart();
+        }
 
     }
-    private void findAndReplace(boolean onlyFind){
-        JDialog fFind = new JDialog(this,onlyFind?"Find":"Replace");
-        JLabel label = new JLabel(onlyFind?"Find":"Replace"+" What:");
-        JTextField textField = new JTextField();
+    private void findAndReplace(boolean showReplace){
+        JDialog fFind = new JDialog(this,"Replace");
+        JLabel label1 = new JLabel("Find What:");
+        JLabel label2 = new JLabel("Replace With:");
+        JTextField txtFind    = new JTextField();
+        JTextField txtReplace = new JTextField();
         JCheckBox caseCheckBox = new JCheckBox("Match Case");
         JCheckBox wrapCheckBox = new JCheckBox("Wrap Around");
 
@@ -168,28 +182,46 @@ public class JEdit extends JFrame implements ActionListener{
         JButton replaceAll = new JButton("Replace All");
 
         findNext.addActionListener(e->{
-            findString = textField.getText();
+            findString = txtFind.getText();
             findCase   = caseCheckBox.isSelected();
             findWrap   = wrapCheckBox.isSelected();
             findText(false,fFind);
         });
 
         findPrev.addActionListener(e->{
-            findString = textField.getText();
+            findString = txtFind.getText();
             findCase   = caseCheckBox.isSelected();
             findWrap   = wrapCheckBox.isSelected();
             findText(true,fFind);
         });
 
+        replace.addActionListener(e->{
+            findString = txtFind.getText();
+            replaceString = txtReplace.getText();
+            findCase   = caseCheckBox.isSelected();
+            findWrap   = wrapCheckBox.isSelected();
+            replaceText(fFind);
+        });
+
+        replaceAll.addActionListener(e->{
+            findString = txtFind.getText();
+            replaceString = txtReplace.getText();
+            findCase   = caseCheckBox.isSelected();
+            replaceTextAll();
+        });
+
         GroupLayout layout = new GroupLayout(fFind.getContentPane());
         fFind.getContentPane().setLayout(layout);
         layout.setAutoCreateGaps(true);
-        layout.setAutoCreateContainerGaps(true);
+//        layout.setAutoCreateContainerGaps(true);
 
-        layout.setHorizontalGroup(layout.createSequentialGroup()
-                .addComponent(label)
+        layout.setHorizontalGroup(layout.createSequentialGroup().addGap(20)
                 .addGroup(layout.createParallelGroup(LEADING)
-                        .addComponent(textField)
+                        .addComponent(label1)
+                        .addComponent(label2))
+                .addGroup(layout.createParallelGroup(LEADING)
+                        .addComponent(txtFind)
+                        .addComponent(txtReplace)
                         .addGroup(layout.createSequentialGroup()
                                 .addComponent(caseCheckBox)
                                 .addComponent(wrapCheckBox)))
@@ -198,32 +230,40 @@ public class JEdit extends JFrame implements ActionListener{
                         .addComponent(findPrev)
                         .addComponent(replace)
                         .addComponent(replaceAll)
-                )
+                ).addGap(20)
         );
 
         layout.linkSize(SwingConstants.HORIZONTAL, findNext, findPrev, replace, replaceAll);
 
-        layout.setVerticalGroup(layout.createSequentialGroup()
+
+        layout.setVerticalGroup(layout.createSequentialGroup().addGap(10)
                 .addGroup(layout.createParallelGroup(BASELINE)
-                        .addComponent(label)
-                        .addComponent(textField)
+                        .addComponent(label1)
+                        .addComponent(txtFind)
                         .addComponent(findNext))
                 .addGroup(layout.createParallelGroup(LEADING)
+                        .addComponent(label2)
                         .addGroup(layout.createSequentialGroup()
+                                .addComponent(txtReplace)
+                                .addGap(showReplace?7:0)
                                 .addGroup(layout.createParallelGroup(BASELINE)
                                         .addComponent(caseCheckBox)
-                                        .addComponent(wrapCheckBox))
-                                .addGroup(layout.createParallelGroup(BASELINE)))
-                        .addComponent(findPrev))
-                .addGroup(layout.createParallelGroup(BASELINE).addComponent(replace))
-                .addGroup(layout.createParallelGroup(BASELINE).addComponent(replaceAll))
+                                        .addComponent(wrapCheckBox)
+                                        .addComponent(replace)
+                                )
+                        )
+                        .addComponent(findPrev)
+                )
+                .addComponent(replaceAll).addGap(20)
         );
 
-        replace.setVisible(!onlyFind);
-        replaceAll.setVisible(!onlyFind);
+        replace.setVisible(showReplace);
+        replaceAll.setVisible(showReplace);
+        txtReplace.setVisible(showReplace);
+        label2.setVisible(showReplace);
 
         fFind.pack();
-        fFind.setLocationRelativeTo(this);
+        fFind.setLocationRelativeTo(null);
         fFind.setResizable(false);
         fFind.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         fFind.setVisible(true);
