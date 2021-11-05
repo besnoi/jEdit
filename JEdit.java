@@ -1,6 +1,5 @@
 //youngneer
 
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -8,6 +7,7 @@ import java.io.*;
 
 import javax.swing.UIManager.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.undo.UndoManager;
 
 import static javax.swing.GroupLayout.Alignment.*;
 import java.net.URL;
@@ -16,8 +16,9 @@ public class JEdit extends JFrame implements ActionListener{
     JTextArea   textArea;
     JScrollPane scrollPane;
     File currentFile;
+    UndoManager um = new UndoManager();
     int findIndex = 0;
-    String findString = "", replaceString = "";
+    String findString = null, replaceString = null;
     boolean findWrap = false, findCase = false;
     JEdit(){
         setBounds(0,0,640,480);
@@ -53,6 +54,11 @@ public class JEdit extends JFrame implements ActionListener{
             case "Print":
                 printFile();
                 break;
+            case "Undo":
+                try{um.undo();}catch(Exception e){}
+                break;
+            case "Redo":
+                try{um.redo();}catch(Exception e){}
             case "Cut":
                 textArea.cut();
                 break;
@@ -61,6 +67,22 @@ public class JEdit extends JFrame implements ActionListener{
                 break;
             case "Paste":
                 textArea.paste();
+                break;
+            case "Find":
+                findAndReplace(false);
+                break;
+            case "Find Next":
+                System.out.println("atleast this is working");
+                if (findString!=null)  findText(false,this); else findAndReplace(false);
+                break;
+            case "Find Previous":
+                if (findString!=null)  findText(true,this); else findAndReplace(false);
+                break;
+            case "Replace":
+                findAndReplace(true);
+                break;
+            case "Replace All":
+                if (replaceString!=null) replaceTextAll(); else findAndReplace(true);
                 break;
             case "Select All":
                 textArea.selectAll();
@@ -74,12 +96,6 @@ public class JEdit extends JFrame implements ActionListener{
                         "About jEdit ",
                         JOptionPane.INFORMATION_MESSAGE
                 );
-                break;
-            case "Find":
-                findAndReplace(false);
-                break;
-            case "Replace":
-                findAndReplace(true);
                 break;
             case "Quit":
                 System.exit(0);
@@ -108,6 +124,7 @@ public class JEdit extends JFrame implements ActionListener{
         }
     }
     public void toggleWordWrap(){
+        textArea.setLineWrap(!textArea.getLineWrap());
         textArea.setWrapStyleWord(!textArea.getWrapStyleWord());
     }
     private void replaceText(JDialog parent){
@@ -119,10 +136,9 @@ public class JEdit extends JFrame implements ActionListener{
         }
     }
     private void replaceTextAll(){
-
         textArea.setText(textArea.getText().replaceAll((!findCase?"(?i)":"")+findString,replaceString));
     }
-    private void findText(boolean prev,JDialog parent){
+    private void findText(boolean prev,Component parent){
         findIndex = textArea.getCaretPosition();
         if (textArea.getSelectedText()!=null) {
             if (prev)
@@ -168,7 +184,7 @@ public class JEdit extends JFrame implements ActionListener{
 
     }
     private void findAndReplace(boolean showReplace){
-        JDialog fFind = new JDialog(this,"Replace");
+        JDialog fFind = new JDialog(this,showReplace?"Replace":"Find");
         JLabel label1 = new JLabel("Find What:");
         JLabel label2 = new JLabel("Replace With:");
         JTextField txtFind    = new JTextField();
@@ -180,6 +196,7 @@ public class JEdit extends JFrame implements ActionListener{
         JButton findPrev   = new JButton("Find Previous");
         JButton replace    = new JButton("Replace");
         JButton replaceAll = new JButton("Replace All");
+
 
         findNext.addActionListener(e->{
             findString = txtFind.getText();
@@ -234,6 +251,8 @@ public class JEdit extends JFrame implements ActionListener{
         );
 
         layout.linkSize(SwingConstants.HORIZONTAL, findNext, findPrev, replace, replaceAll);
+        layout.linkSize(SwingConstants.VERTICAL, label1,txtFind,findNext);
+        layout.linkSize(SwingConstants.VERTICAL, label2,txtReplace,findPrev);
 
 
         layout.setVerticalGroup(layout.createSequentialGroup().addGap(10)
@@ -267,7 +286,18 @@ public class JEdit extends JFrame implements ActionListener{
         fFind.setResizable(false);
         fFind.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         fFind.setVisible(true);
+
+        if (findString!=null) {
+            txtFind.setText(findString);
+            if (showReplace&&replaceString==null)
+                txtReplace.requestFocus();
+        }
+
+        if (replaceString!=null)
+            txtReplace.setText(replaceString);
+
     }
+
     private void newFile(){
         setTitle("Untitled - jEdit");
         textArea.setText("");
@@ -322,6 +352,7 @@ public class JEdit extends JFrame implements ActionListener{
     }
     private void initTextArea(){
         textArea = new JTextArea();
+        textArea.getDocument().addUndoableEditListener(e->um.addEdit(e.getEdit()));
         textArea.setFont(new Font("SAN_SERIF", Font.PLAIN, 20));
         scrollPane = new JScrollPane(textArea);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -361,13 +392,20 @@ public class JEdit extends JFrame implements ActionListener{
         mFile.add(mPrint);
         mFile.add(mExit);
 
-        JMenuItem mCut       = new JMenuItem("Cut");
-        JMenuItem mCopy      = new JMenuItem("Copy");
-        JMenuItem mPaste     = new JMenuItem("Paste");
-        JMenuItem mFind      = new JMenuItem("Find");
-        JMenuItem mReplace   = new JMenuItem("Replace");
-        JMenuItem mSelectAll = new JMenuItem("Select All");
+        JMenuItem mUndo       = new JMenuItem("Undo");
+        JMenuItem mRedo       = new JMenuItem("Redo");
+        JMenuItem mCut        = new JMenuItem("Cut");
+        JMenuItem mCopy       = new JMenuItem("Copy");
+        JMenuItem mPaste      = new JMenuItem("Paste");
+        JMenuItem mFind       = new JMenuItem("Find");
+        JMenuItem mFindNext   = new JMenuItem("Find Next");
+        JMenuItem mFindPrev   = new JMenuItem("Find Previous");
+        JMenuItem mReplace    = new JMenuItem("Replace");
+        JMenuItem mReplaceAll = new JMenuItem("Replace All");
+        JMenuItem mSelectAll  = new JMenuItem("Select All");
 
+        mUndo.setAccelerator       (KeyStroke.getKeyStroke (KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK));
+        mRedo.setAccelerator       (KeyStroke.getKeyStroke (KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK));
         mCut.setAccelerator        (KeyStroke.getKeyStroke (KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK));
         mCopy.setAccelerator       (KeyStroke.getKeyStroke (KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK));
         mPaste.setAccelerator      (KeyStroke.getKeyStroke (KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK));
@@ -375,11 +413,19 @@ public class JEdit extends JFrame implements ActionListener{
         mReplace.setAccelerator    (KeyStroke.getKeyStroke (KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
         mSelectAll.setAccelerator  (KeyStroke.getKeyStroke (KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK));
 
+        mEdit.add(mUndo);
+        mEdit.add(mRedo);
+        mEdit.add(new JSeparator());
         mEdit.add(mCut);
         mEdit.add(mCopy);
         mEdit.add(mPaste);
+        mEdit.add(new JSeparator());
         mEdit.add(mFind);
+        mEdit.add(mFindNext);
+        mEdit.add(mFindPrev);
         mEdit.add(mReplace);
+        mEdit.add(mReplaceAll);
+        mEdit.add(new JSeparator());
         mEdit.add(mSelectAll);
 
         JMenuItem mWordWrap = new JCheckBoxMenuItem("Word Wrap");
@@ -388,20 +434,25 @@ public class JEdit extends JFrame implements ActionListener{
         JMenuItem mAbout = new JMenuItem("About");
         mHelp.add(mAbout);
 
-        mNew.addActionListener       (this);
-        mOpen.addActionListener      (this);
-        mSave.addActionListener      (this);
-        mSaveAs.addActionListener    (this);
-        mPrint.addActionListener     (this);
-        mExit.addActionListener      (this);
-        mCut.addActionListener       (this);
-        mCopy.addActionListener      (this);
-        mPaste.addActionListener     (this);
-        mFind.addActionListener      (this);
-        mReplace.addActionListener   (this);
-        mSelectAll.addActionListener (this);
-        mWordWrap.addActionListener  (this);
-        mAbout.addActionListener     (this);
+        mNew.addActionListener        (this);
+        mOpen.addActionListener       (this);
+        mSave.addActionListener       (this);
+        mSaveAs.addActionListener     (this);
+        mPrint.addActionListener      (this);
+        mExit.addActionListener       (this);
+        mUndo.addActionListener       (this);
+        mRedo.addActionListener       (this);
+        mCut.addActionListener        (this);
+        mCopy.addActionListener       (this);
+        mPaste.addActionListener      (this);
+        mFind.addActionListener       (this);
+        mFindNext.addActionListener   (this);
+        mFindPrev.addActionListener   (this);
+        mReplace.addActionListener    (this);
+        mReplaceAll.addActionListener (this);
+        mSelectAll.addActionListener  (this);
+        mWordWrap.addActionListener   (this);
+        mAbout.addActionListener      (this);
 
         setJMenuBar(menubar);
     }
