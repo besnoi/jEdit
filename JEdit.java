@@ -5,7 +5,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 
-import javax.swing.UIManager.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.undo.UndoManager;
 
@@ -14,7 +13,6 @@ import java.net.URL;
 
 public class JEdit extends JFrame implements ActionListener{
     JTextArea   textArea;
-    JScrollPane scrollPane;
     File currentFile;
     UndoManager um = new UndoManager();
     int findIndex = 0;
@@ -104,7 +102,7 @@ public class JEdit extends JFrame implements ActionListener{
     }
     private void setIcon(){
         URL url = this.getClass().getResource("/icon.png");
-        System.out.println(url);
+        if (url==null) return;
         Toolkit kit = Toolkit.getDefaultToolkit();
         Image img = kit.createImage(url);
         setIconImage(img);
@@ -113,14 +111,7 @@ public class JEdit extends JFrame implements ActionListener{
         try {
             //set default Look and Feel for the OS
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-//            for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-//                if ("Nimbus".equals(info.getName())) {
-//                    UIManager.setLookAndFeel(info.getClassName());
-//                    break;
-//                }
-//            }
         } catch (Exception e) {
-            // If Nimbus is not available, you can set the GUI to another look and feel.
         }
     }
     public void toggleWordWrap(){
@@ -251,6 +242,7 @@ public class JEdit extends JFrame implements ActionListener{
         );
 
         layout.linkSize(SwingConstants.HORIZONTAL, findNext, findPrev, replace, replaceAll);
+        layout.linkSize(SwingConstants.VERTICAL, findNext, findPrev, replace, replaceAll);
         layout.linkSize(SwingConstants.VERTICAL, label1,txtFind,findNext);
         layout.linkSize(SwingConstants.VERTICAL, label2,txtReplace,findPrev);
 
@@ -335,7 +327,7 @@ public class JEdit extends JFrame implements ActionListener{
         JFileChooser fSaveAs = new JFileChooser();
         fSaveAs.setDialogTitle("Save As");
         if (fSaveAs.showSaveDialog(this) != JFileChooser.APPROVE_OPTION)
-        return;
+            return;
         String pathname = fSaveAs.getSelectedFile().toString();
         File file = new File(removeTXT(pathname)+".txt");
 
@@ -345,7 +337,6 @@ public class JEdit extends JFrame implements ActionListener{
                     JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION)
                 saveAs();
 
-
         currentFile = file;
         saveFile();
 
@@ -354,7 +345,7 @@ public class JEdit extends JFrame implements ActionListener{
         textArea = new JTextArea();
         textArea.getDocument().addUndoableEditListener(e->um.addEdit(e.getEdit()));
         textArea.setFont(new Font("SAN_SERIF", Font.PLAIN, 20));
-        scrollPane = new JScrollPane(textArea);
+        JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         add(scrollPane, BorderLayout.CENTER);
     }
