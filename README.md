@@ -4,7 +4,7 @@
 
 
 
-<p align="center"><img src="screen.png" width="640"><br/>jEdit: A sweet and simple text editor in Java</p>
+<p align="center"><img src="main.png" width="640"><br/>jEdit: A sweet and simple text editor in Java</p>
 
 ## Features
 
